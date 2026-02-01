@@ -1,6 +1,8 @@
 networks:
   frontend:
+    name: frontend
   backend:
+    name: backend
 
 services:
   # --- AUTOMATED REVERSE PROXY ---
@@ -27,13 +29,18 @@ services:
     image: nginxproxy/acme-companion:latest
     container_name: nginx-proxy-acme
     environment:
-      - DEFAULT_EMAIL=tu-email@ejemplo.com
+      - DEFAULT_EMAIL=victor.manuel.corral.ruiz@gmail.com
       - NGINX_PROXY_CONTAINER=nginx-proxy
+      #contenido agregado para dominio duck dns
+      - DuckDNS_Token=a98d966d-f786-4407-9e1b-5bcc08ea3f20
+      - ACMESH_DNS_API_CONFIG={"DNS_API":"dns_duckdns"}
+      - ACME_CHALLENGE=DNS-01
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - certs:/etc/nginx/certs
       - vhost:/etc/nginx/vhost.d
       - html:/usr/share/nginx/html
+      - acme:/etc/acme.sh
     depends_on:
       - nginx-proxy
     networks:
@@ -51,7 +58,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data:/data
     environment:
-      - VIRTUAL_HOST=portainer.miservidor.local
+      #Contenido local
+      - VIRTUAL_HOST=portainer.victor.2daw
       - VIRTUAL_PORT=9000
     networks:
       - frontend
@@ -65,7 +73,7 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     environment:
-      - VIRTUAL_HOST=prometheus.miservidor.local
+      - VIRTUAL_HOST=prometheus.victor.2daw
       - VIRTUAL_PORT=9090
     networks:
       - backend
@@ -96,7 +104,7 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
     environment:
-      - VIRTUAL_HOST=grafana.miservidor.local
+      - VIRTUAL_HOST=grafana.victor.2daw
       - VIRTUAL_PORT=3000
     networks:
       - frontend
@@ -110,3 +118,4 @@ volumes:
   certs:
   vhost:
   html:
+  acme:

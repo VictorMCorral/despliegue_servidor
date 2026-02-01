@@ -30,5 +30,16 @@ echo "Directorio para aplicaciones listo en: /home/$USER_NAME/apps/" [cite: 72]
 echo "----------------------------------------------------------"
 
 # 5. Cambio de usuario para verificar el entorno [cite: 156]
-echo "Cambiando a la sesión de $USER_NAME. Prueba a ejecutar 'docker ps'."
+echo "----------------------------------------------------------"
+echo "IMPORTANTE PARA EL DESPLIEGUE:"
+echo "1. Sube tu carpeta a /home/$USER_NAME/apps/nombre-app"
+echo "2. Tu docker-compose.yml DEBE usar la red externa: frontend"
+echo "3. Usa la variable VIRTUAL_HOST para tu dominio .2daw"
+echo "----------------------------------------------------------"
+
+# Verificamos si la red existe, si no, la creamos para evitar errores
+sudo docker network create frontend 2>/dev/null
+
 sudo su - "$USER_NAME"
+
+
