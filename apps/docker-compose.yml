@@ -16,6 +16,7 @@ services:
       - "443:443"
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
+      #- ./proxy.conf:/etc/nginx/conf.d/proxy.conf:ro
       - certs:/etc/nginx/certs:ro
       - vhost:/etc/nginx/vhost.d
       - html:/usr/share/nginx/html
@@ -32,9 +33,9 @@ services:
       - DEFAULT_EMAIL=victor.manuel.corral.ruiz@gmail.com
       - NGINX_PROXY_CONTAINER=nginx-proxy
       #contenido agregado para dominio duck dns
-      - DuckDNS_Token=a98d966d-f786-4407-9e1b-5bcc08ea3f20
-      - ACMESH_DNS_API_CONFIG={"DNS_API":"dns_duckdns"}
-      - ACME_CHALLENGE=DNS-01
+      #- DuckDNS_Token=a98d966d-f786-4407-9e1b-5bcc08ea3f20
+      #- ACMESH_DNS_API_CONFIG={"DNS_API":"dns_duckdns"}
+      #- ACME_CHALLENGE=DNS-01
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - certs:/etc/nginx/certs
@@ -59,7 +60,7 @@ services:
       - portainer_data:/data
     environment:
       #Contenido local
-      - VIRTUAL_HOST=portainer.victor.2daw
+      - VIRTUAL_HOST=portainer.victor2daw.dpdns.org
       - VIRTUAL_PORT=9000
     networks:
       - frontend
@@ -69,12 +70,14 @@ services:
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
+    #ports:
+     #- "9090:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
-    environment:
-      - VIRTUAL_HOST=prometheus.victor.2daw
-      - VIRTUAL_PORT=9090
+    #environment:
+      #- VIRTUAL_HOST=prometheus.victor2daw.dpdns.org
+      #- VIRTUAL_PORT=9090
     networks:
       - backend
       - frontend
@@ -99,17 +102,26 @@ services:
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
-    ports:
-    - "3000:3000"
+    #ports:
+    #- "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
     environment:
-      - VIRTUAL_HOST=grafana.victor.2daw
+      - VIRTUAL_HOST=grafana.victor2daw.dpdns.org
       - VIRTUAL_PORT=3000
     networks:
       - frontend
       - backend
     restart: unless-stopped
+  cloudflare-tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflare-tunnel
+    restart: always
+    environment:
+      - TUNNEL_TOKEN=eyJhIjoiMzlmNzlhMmRmMzU0NmI3YjZhZmY2YzE2YzkxYmFkZTMiLCJ0IjoiZTAxZjkyMTAtMmQ4ZC00M2NhLWE4MWMtODg0ZDYyZTU5OTM5IiwicyI6Ik1HRTJPVGs1TkdJdFl6TXlOQzAwTkdSaUxUZ3hNREl0TVRnMVl6bGlZbU0zWXpCbSJ9
+    command: tunnel --no-autoupdate run --protocol http2
+    networks:
+      - frontend
 
 volumes:
   portainer_data:
