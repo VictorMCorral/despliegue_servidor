@@ -7,7 +7,7 @@ networks:
 services:
   # --- AUTOMATED REVERSE PROXY ---
   nginx-proxy:
-    image: nginxproxy/nginx-proxy:latest
+    image: nginxproxy/nginx-proxy:${NGINX_PROXY_VERSION}
     container_name: nginx-proxy
     labels:
       - com.github.nginx-proxy.nginx=true
@@ -16,7 +16,6 @@ services:
       - "443:443"
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-      #- ./proxy.conf:/etc/nginx/conf.d/proxy.conf:ro
       - certs:/etc/nginx/certs:ro
       - vhost:/etc/nginx/vhost.d
       - html:/usr/share/nginx/html
@@ -26,58 +25,52 @@ services:
     restart: always
 
   # --- SSL AUTOMATION ---
-  acme-companion:
-    image: nginxproxy/acme-companion:latest
-    container_name: nginx-proxy-acme
-    environment:
-      - DEFAULT_EMAIL=victor.manuel.corral.ruiz@gmail.com
-      - NGINX_PROXY_CONTAINER=nginx-proxy
-      #contenido agregado para dominio duck dns
-      #- DuckDNS_Token=a98d966d-f786-4407-9e1b-5bcc08ea3f20
-      #- ACMESH_DNS_API_CONFIG={"DNS_API":"dns_duckdns"}
-      #- ACME_CHALLENGE=DNS-01
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - certs:/etc/nginx/certs
-      - vhost:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
-      - acme:/etc/acme.sh
-    depends_on:
-      - nginx-proxy
-    networks:
-      - frontend
-    restart: always
+  # acme-companion:
+  #   image: nginxproxy/acme-companion:latest
+  #   container_name: nginx-proxy-acme
+  #   environment:
+  #     - DEFAULT_EMAIL=${ACME_EMAIL}
+  #     - NGINX_PROXY_CONTAINER=nginx-proxy
+  #     # Configuración para validación automática
+  #     - DuckDNS_Token=${DUCKDNS_TOKEN}
+  #     - ACMESH_DNS_API_CONFIG={"DNS_API":"dns_duckdns"}
+  #     - ACME_CHALLENGE=DNS-01
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #     - certs:/etc/nginx/certs
+  #     - vhost:/etc/nginx/vhost.d
+  #     - html:/usr/share/nginx/html
+  #     - acme:/etc/acme.sh
+  #   depends_on:
+  #     - nginx-proxy
+  #   networks:
+  #     - frontend
+  #   restart: always
 
   # --- MANAGEMENT ---
   portainer:
-    image: portainer/portainer-ce:latest
+    image: portainer/portainer-ce:${PORTAINER_VERSION}
     container_name: portainer
     command: -H unix:///var/run/docker.sock
-    ports:
-      - "9000:9000"
+    # ports: - "9000:9000" # Comentado porque entramos vía Proxy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data:/data
     environment:
-      #Contenido local
-      - VIRTUAL_HOST=portainer.victor2daw.dpdns.org
+      - VIRTUAL_HOST=portainer.${MAIN_DOMAIN}
       - VIRTUAL_PORT=9000
+      - LETSENCRYPT_HOST=portainer.${MAIN_DOMAIN}
     networks:
       - frontend
     restart: unless-stopped
 
   # --- MONITORING ---
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:${PROMETHEUS_VERSION}
     container_name: prometheus
-    #ports:
-     #- "9090:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
-    #environment:
-      #- VIRTUAL_HOST=prometheus.victor2daw.dpdns.org
-      #- VIRTUAL_PORT=9090
     networks:
       - backend
       - frontend
@@ -100,25 +93,26 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:${GRAFANA_VERSION}
     container_name: grafana
-    #ports:
-    #- "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
     environment:
-      - VIRTUAL_HOST=grafana.victor2daw.dpdns.org
+      - VIRTUAL_HOST=grafana.${MAIN_DOMAIN}
       - VIRTUAL_PORT=3000
+      - LETSENCRYPT_HOST=grafana.${MAIN_DOMAIN}
     networks:
       - frontend
       - backend
     restart: unless-stopped
+
+  # --- CLOUDFLARE TUNNEL (EDGE ACCESS) ---
   cloudflare-tunnel:
     image: cloudflare/cloudflared:latest
     container_name: cloudflare-tunnel
     restart: always
     environment:
-      - TUNNEL_TOKEN=eyJhIjoiMzlmNzlhMmRmMzU0NmI3YjZhZmY2YzE2YzkxYmFkZTMiLCJ0IjoiZTAxZjkyMTAtMmQ4ZC00M2NhLWE4MWMtODg0ZDYyZTU5OTM5IiwicyI6Ik1HRTJPVGs1TkdJdFl6TXlOQzAwTkdSaUxUZ3hNREl0TVRnMVl6bGlZbU0zWXpCbSJ9
+      - TUNNEL_TOKEN=${CF_TUNNEL_TOKEN}
     command: tunnel --no-autoupdate run --protocol http2
     networks:
       - frontend
