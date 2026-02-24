@@ -20,21 +20,22 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
-          # IMPORTANTE: Si tu archivo en VS Code es "dockerfile", aquí debe ser minúscula
           file: ./dockerfile  
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/mi-proxy:latest
+          # AQUÍ CONFIGURAMOS LAS ETIQUETAS MÚLTIPLES
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/mi-proxy:latest
+            ${{ secrets.DOCKER_USERNAME }}/mi-proxy:v${{ github.run_number }}
           
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: '${{ secrets.DOCKER_USERNAME }}/mi-proxy:latest'
+          # Escaneamos la versión específica que acabamos de crear
+          image-ref: '${{ secrets.DOCKER_USERNAME }}/mi-proxy:v${{ github.run_number }}'
           format: 'table'
-          exit-code: '0' # Cambia a '1' si quieres que el Action falle si hay fallos graves
+          exit-code: '0'
           severity: 'CRITICAL,HIGH'
-          
