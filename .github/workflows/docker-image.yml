@@ -24,7 +24,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile  # Asegúrate de que coincida con el nombre del archivo
+          # IMPORTANTE: Si tu archivo en VS Code es "dockerfile", aquí debe ser minúscula
+          file: ./dockerfile  
           push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/mi-proxy:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/mi-proxy:latest
