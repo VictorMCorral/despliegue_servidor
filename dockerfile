@@ -1,20 +1,13 @@
-# Usamos una versión estable de Node.js
-FROM node:18-alpine
+# Usamos la imagen oficial de Nginx
+FROM nginx:alpine
 
-# Creamos el directorio de trabajo
-WORKDIR /usr/src/app
+# Borramos la configuración por defecto de Nginx
+RUN rm /etc/nginx/conf.d/default.conf
 
-# Copiamos los archivos de dependencias
-COPY package*.json ./
+# Copiamos tu archivo de configuración personalizado al contenedor
+# (Asegúrate de que el nombre del archivo sea exacto)
+COPY proxy.conf /etc/nginx/conf.d/proxy.conf
 
-# Instalamos las dependencias
-RUN npm install --production
-
-# Copiamos el resto del código de tu repositorio
-COPY . .
-
-# Tu servidor corre en el puerto 3000 (según tu código)
-EXPOSE 3000
-
-# Comando para arrancar la app
-CMD [ "node", "index.js" ]
+# Exponemos los puertos típicos
+EXPOSE 80
+EXPOSE 443
