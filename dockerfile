@@ -6,7 +6,7 @@ RUN rm /etc/nginx/conf.d/default.conf
 
 # Copiamos tu archivo de configuración personalizado al contenedor
 # (Asegúrate de que el nombre del archivo sea exacto)
-COPY proxy.conf /etc/nginx/conf.d/proxy.conf
+COPY ./apps/proxy.conf /etc/nginx/conf.d/proxy.conf
 
 # Exponemos los puertos típicos
 EXPOSE 80
