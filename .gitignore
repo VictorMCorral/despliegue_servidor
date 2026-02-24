@@ -44,3 +44,8 @@ logs/
 # mysql_data/
 # prometheus_data/
 # grafana_data/
+
+node_modules
+npm-debug.log
+.git
+.github
