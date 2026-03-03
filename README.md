@@ -25,31 +25,34 @@ Este documento detalla el procedimiento operativo para la administración, despl
 
 ## 🔧 Arquitectura de Red
 
-`
-                    ┌─────────────────────────────────────────┐
-                    │           INTERNET (HTTPS 443)          │
-                    └─────────────────┬───────────────────────┘
-                                      │
-                    ┌─────────────────▼───────────────────────┐
-                    │           nginx-proxy                    │
-                    │     (Reverse Proxy + SSL Auto)          │
-                    │         Red: frontend                   │
-                    └─────────────────┬───────────────────────┘
-                                      │
-        ┌─────────────────────────────┼─────────────────────────────┐
-        │                             │                             │
-┌───────▼───────┐           ┌────────▼────────┐           ┌────────▼────────┐
-│   Portainer   │           │   PrietoEats    │           │   Meteorología  │
-│   :9000       │           │   :80           │           │   :80           │
-│ Red: frontend │           │ Red: frontend   │           │ Red: frontend   │
-└───────────────┘           │      + internal │           │      + backend  │
-                            └────────┬────────┘           └────────┬────────┘
-                                     │                             │
-                            ┌────────▼────────┐           ┌────────▼────────┐
-                            │  PostgreSQL DB  │           │    MariaDB      │
-                            │  Red: internal  │           │  Red: backend   │
-                            └─────────────────┘           └─────────────────┘
-`
+```
+                         ┌─────────────────────────────────────────┐
+                         │           INTERNET (HTTPS 443)          │
+                         └─────────────────┬───────────────────────┘
+                                           │
+                         ┌─────────────────▼───────────────────────┐
+                         │           nginx-proxy                    │
+                         │     (Reverse Proxy + SSL Auto)          │
+                         │         Red: frontend                   │
+                         └─────────────────┬───────────────────────┘
+                                           │
+     ┌──────────────────┬──────────────────┼──────────────────┬──────────────────┐
+     │                  │                  │                  │                  │
+┌────▼─────┐      ┌─────▼─────┐      ┌─────▼─────┐      ┌─────▼─────┐      ┌─────▼─────┐
+│Portainer │      │  Grafana  │      │PrietoEats │      │Meteorología│     │ Prometheus│
+│  :9000   │      │  :3000    │      │   :80     │      │   :80      │     │   :9090   │
+│ frontend │      │ frontend  │      │ frontend  │      │ frontend   │     │  backend  │
+└──────────┘      │  +backend │      │ +internal │      │  +backend  │     └─────┬─────┘
+                  └─────┬─────┘      └─────┬─────┘      └─────┬─────┘           │
+                        │                  │                  │                 │
+                        │            ┌─────▼─────┐      ┌─────▼─────┐           │
+                        │            │PostgreSQL │      │  MariaDB  │           │
+                        │            │  internal │      │  backend  │           │
+                        │            └───────────┘      └───────────┘           │
+                        │                                                       │
+                        └───────────────────────────────────────────────────────┘
+                                      (Grafana consulta Prometheus)
+```
 
 **Redes Docker:**
 - **frontend**: Red externa para servicios web accesibles via nginx-proxy
@@ -61,19 +64,19 @@ Este documento detalla el procedimiento operativo para la administración, despl
 
 ### Paso 1: Crear estructura de archivos
 
-`
+```
 mi-nueva-app/
 ├── docker-compose.yml
 ├── .env
 ├── public/           # (opcional) archivos web
 └── src/              # (opcional) código fuente
-`
+```
 
 ### Paso 2: Crear docker-compose.yml
 
 #### Ejemplo: Aplicación PHP con Base de Datos
 
-`yaml
+```yaml
 services:
   # ═══════════════════════════════════════════════════════════
   # BASE DE DATOS
@@ -157,11 +160,11 @@ networks:
 # ═══════════════════════════════════════════════════════════
 volumes:
   mysql_data:
-`
+```
 
 ### Paso 3: Crear archivo .env
 
-`nv
+```env
 # ═══════════════════════════════════════════════════════════
 # CONFIGURACIÓN DE BASE DE DATOS
 # ═══════════════════════════════════════════════════════════
@@ -175,20 +178,20 @@ DB_PASSWORD=mi_password_segura
 # ═══════════════════════════════════════════════════════════
 APP_ENV=production
 APP_DEBUG=false
-`
+```
 
 ### Paso 4: Subir al servidor
 
-`ash
+```bash
 # Desde tu PC local
-scp -r -P 2241 ./mi-nueva-app victor@www.servidorgp.somosdelprieto.com:~/apps/
-`
+scp -r -P <puerto> ./mi-nueva-app victor@www.servidorgp.somosdelprieto.com:~/apps/
+```
 
 ### Paso 5: Desplegar
 
-`ash
+```bash
 # Conectar al servidor
-ssh -p 2241 victor@www.servidorgp.somosdelprieto.com
+ssh -p <puerto> victor@www.servidorgp.somosdelprieto.com
 
 # Ir a la carpeta y desplegar
 cd ~/apps/mi-nueva-app
@@ -196,7 +199,7 @@ docker compose up -d
 
 # Verificar que está corriendo
 docker ps | grep miapp
-`
+```
 
 ---
 
@@ -204,25 +207,25 @@ docker ps | grep miapp
 
 Para que tu aplicación sea accesible via HTTPS, **DEBE** tener estas variables de entorno:
 
-`yaml
+```yaml
 environment:
   VIRTUAL_HOST: tu-subdominio.victor.servidorgp.somosdelprieto.com
   VIRTUAL_PORT: "80"
   LETSENCRYPT_HOST: tu-subdominio.victor.servidorgp.somosdelprieto.com
-`
+```
 
 Y estar conectado a la red **frontend**:
 
-`yaml
+```yaml
 networks:
   - frontend
-`
+```
 
 ---
 
 ## 🔍 Ejemplo: Aplicación Simple (Solo HTML/Nginx)
 
-`yaml
+```yaml
 services:
   web:
     image: nginx:alpine
@@ -239,7 +242,7 @@ services:
 networks:
   frontend:
     external: true
-`
+```
 
 ---
 
@@ -277,10 +280,10 @@ df -h
 
 ## 🔐 Conexión al Servidor
 
-`ash
-ssh -p 2241 victor@www.servidorgp.somosdelprieto.com
-# Password: Prieto*2
-`
+```bash
+ssh -p <puerto> victor@www.servidorgp.somosdelprieto.com
+
+```
 
 ---
 
