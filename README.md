@@ -1,102 +1,294 @@
 # 🚀 Enterprise Web Infrastructure Stack: Docker, Proxy & Telemetry
 
-![alt text](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white) 
-![alt text](https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white)
-![alt text](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white)
-![alt text](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white)
-![alt text](https://img.shields.io/badge/Cloudflare-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)
-
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Nginx](https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white)
+![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white)
+![Grafana](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white)
 
 ## 📖 Runbook: Servidor de Aplicaciones Web con Docker
 
-Este documento detalla el procedimiento operativo para la administración, despliegue y mantenimiento del servidor de aplicaciones desarrollado para la práctica de **RA2**.
+Este documento detalla el procedimiento operativo para la administración, despliegue y mantenimiento del servidor de aplicaciones.
 
-### 1. Requisitos de Red
-El servidor opera en una arquitectura de red segmentada para garantizar la seguridad:
-*   **Red `frontend`**: Red externa (bridge) donde conviven el Proxy Inverso y los contenedores de aplicaciones que requieren acceso web.
-*   **Red `backend`**: Red privada para servicios de infraestructura (Prometheus, Node Exporter) no accesibles desde el exterior.
-*   **Resolución DNS**: 
-    *   **Local**: Se utiliza un servidor BIND9 para resolver dominios `.2daw` (ej: `apps.victor.2daw`).
-    *   **Público**: Se utiliza DuckDNS (`victorm2daw.duckdns.org`) para la validación de certificados SSL reales con acme.
-    *   **Publico**: Se utiliza `*.victor2daw.dpdns.org` con cloudflare como puente al exterior suministrando SSL gestionados por este.
+---
 
-### 2. Creación de Usuarios de Despliegue
-Para cumplir con la gestión de usuarios y permisos, se incluye un script de automatización `crear_usuario_deploy.sh`.
+## 🌐 Servicios Desplegados Actualmente
 
-**Procedimiento:**
-1.  Ejecutar el script con permisos de superusuario:
-    ```bash
-    sudo ./crear_usuario_deploy.sh
-    ```
-    Si por algun motivo nos equivocamos, podemos lanzar el script de borrar:
-    ```bash 
-    sudo ./borrar_usuario_deploy.sh
-    ```
-    
-2.  Introducir el nombre del alumno (ej: `victor_pruebas`).
-3.  El script automáticamente:
-    *   Crea el usuario y su directorio `home`.
-    *   Asigna al usuario al grupo `docker`.
-    *   Crea la estructura de directorios `~/apps/` con los permisos correctos.
+| Servicio | URL | Descripción |
+|----------|-----|-------------|
+| **Portainer** | https://portainer.victor.servidorgp.somosdelprieto.com | Gestión visual de contenedores |
+| **Grafana** | https://grafana.victor.servidorgp.somosdelprieto.com | Dashboards de monitorización |
+| **PrietoEats** | https://prietoeats.victor.servidorgp.somosdelprieto.com | Aplicación principal |
+| **Meteorología** | https://meteorologia.victor.servidorgp.somosdelprieto.com | App meteorológica |
+| **Meteorología Admin** | https://meteorologia-admin.victor.servidorgp.somosdelprieto.com | PHPMyAdmin |
 
-### 3. Procedimiento Estándar de Despliegue
-Cualquier aplicación debe seguir este flujo para ser integrada en el sistema:
+---
 
-#### Paso 1: Preparación local (en el PC del alumno)
-Crear una carpeta con los archivos de la app y un `docker-compose.yml` siguiendo esta plantilla:
-```yaml
+## 🔧 Arquitectura de Red
+
+`
+                    ┌─────────────────────────────────────────┐
+                    │           INTERNET (HTTPS 443)          │
+                    └─────────────────┬───────────────────────┘
+                                      │
+                    ┌─────────────────▼───────────────────────┐
+                    │           nginx-proxy                    │
+                    │     (Reverse Proxy + SSL Auto)          │
+                    │         Red: frontend                   │
+                    └─────────────────┬───────────────────────┘
+                                      │
+        ┌─────────────────────────────┼─────────────────────────────┐
+        │                             │                             │
+┌───────▼───────┐           ┌────────▼────────┐           ┌────────▼────────┐
+│   Portainer   │           │   PrietoEats    │           │   Meteorología  │
+│   :9000       │           │   :80           │           │   :80           │
+│ Red: frontend │           │ Red: frontend   │           │ Red: frontend   │
+└───────────────┘           │      + internal │           │      + backend  │
+                            └────────┬────────┘           └────────┬────────┘
+                                     │                             │
+                            ┌────────▼────────┐           ┌────────▼────────┐
+                            │  PostgreSQL DB  │           │    MariaDB      │
+                            │  Red: internal  │           │  Red: backend   │
+                            └─────────────────┘           └─────────────────┘
+`
+
+**Redes Docker:**
+- **frontend**: Red externa para servicios web accesibles via nginx-proxy
+- **backend**: Red privada para servicios internos (BD, Prometheus, etc.)
+
+---
+
+## 📦 CÓMO DESPLEGAR UNA NUEVA APLICACIÓN
+
+### Paso 1: Crear estructura de archivos
+
+`
+mi-nueva-app/
+├── docker-compose.yml
+├── .env
+├── public/           # (opcional) archivos web
+└── src/              # (opcional) código fuente
+`
+
+### Paso 2: Crear docker-compose.yml
+
+#### Ejemplo: Aplicación PHP con Base de Datos
+
+`yaml
 services:
-  ${USERNAME}:
-    image: nginx:alpine
-    container_name: web-${USERNAME}-final
-    volumes:
-      - ./index.html:/usr/share/nginx/html/index.html:ro
+  # ═══════════════════════════════════════════════════════════
+  # BASE DE DATOS
+  # ═══════════════════════════════════════════════════════════
+  db:
+    image: mariadb:11
+    container_name: miapp_mysql
+    restart: unless-stopped
     environment:
-      - VIRTUAL_HOST=${USERNAME}.victor2daw.dpdns.org
-      - VIRTUAL_PORT=80
+      MARIADB_ROOT_PASSWORD: \
+      MARIADB_DATABASE: \
+      MARIADB_USER: \
+      MARIADB_PASSWORD: \
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-u", "root", "-p\"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # ═══════════════════════════════════════════════════════════
+  # APLICACIÓN PHP
+  # ═══════════════════════════════════════════════════════════
+  app:
+    image: php:8.2-apache
+    container_name: miapp_php
+    restart: unless-stopped
+    environment:
+      # Variables de la app
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: \
+      DB_USERNAME: \
+      DB_PASSWORD: \
+      # Variables para nginx-proxy (OBLIGATORIAS)
+      VIRTUAL_HOST: miapp.victor.servidorgp.somosdelprieto.com
+      VIRTUAL_PORT: "80"
+      LETSENCRYPT_HOST: miapp.victor.servidorgp.somosdelprieto.com
+    volumes:
+      - ./public:/var/www/html
+      - ./src:/var/www/src
+    depends_on:
+      - db
+    networks:
+      - frontend
+      - backend
+
+  # ═══════════════════════════════════════════════════════════
+  # PHPMYADMIN (Opcional)
+  # ═══════════════════════════════════════════════════════════
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: miapp_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: \
+      VIRTUAL_HOST: miapp-admin.victor.servidorgp.somosdelprieto.com
+      VIRTUAL_PORT: "80"
+      LETSENCRYPT_HOST: miapp-admin.victor.servidorgp.somosdelprieto.com
+    networks:
+      - frontend
+      - backend
+
+# ═══════════════════════════════════════════════════════════
+# REDES (OBLIGATORIO usar external: true)
+# ═══════════════════════════════════════════════════════════
+networks:
+  frontend:
+    external: true
+  backend:
+    external: true
+
+# ═══════════════════════════════════════════════════════════
+# VOLÚMENES
+# ═══════════════════════════════════════════════════════════
+volumes:
+  mysql_data:
+`
+
+### Paso 3: Crear archivo .env
+
+`nv
+# ═══════════════════════════════════════════════════════════
+# CONFIGURACIÓN DE BASE DE DATOS
+# ═══════════════════════════════════════════════════════════
+DB_ROOT_PASSWORD=root_password_segura
+DB_DATABASE=mi_base_de_datos
+DB_USERNAME=mi_usuario
+DB_PASSWORD=mi_password_segura
+
+# ═══════════════════════════════════════════════════════════
+# CONFIGURACIÓN DE LA APLICACIÓN
+# ═══════════════════════════════════════════════════════════
+APP_ENV=production
+APP_DEBUG=false
+`
+
+### Paso 4: Subir al servidor
+
+`ash
+# Desde tu PC local
+scp -r -P 2241 ./mi-nueva-app victor@www.servidorgp.somosdelprieto.com:~/apps/
+`
+
+### Paso 5: Desplegar
+
+`ash
+# Conectar al servidor
+ssh -p 2241 victor@www.servidorgp.somosdelprieto.com
+
+# Ir a la carpeta y desplegar
+cd ~/apps/mi-nueva-app
+docker compose up -d
+
+# Verificar que está corriendo
+docker ps | grep miapp
+`
+
+---
+
+## ⚠️ VARIABLES OBLIGATORIAS PARA NGINX-PROXY
+
+Para que tu aplicación sea accesible via HTTPS, **DEBE** tener estas variables de entorno:
+
+`yaml
+environment:
+  VIRTUAL_HOST: tu-subdominio.victor.servidorgp.somosdelprieto.com
+  VIRTUAL_PORT: "80"
+  LETSENCRYPT_HOST: tu-subdominio.victor.servidorgp.somosdelprieto.com
+`
+
+Y estar conectado a la red **frontend**:
+
+`yaml
+networks:
+  - frontend
+`
+
+---
+
+## 🔍 Ejemplo: Aplicación Simple (Solo HTML/Nginx)
+
+`yaml
+services:
+  web:
+    image: nginx:alpine
+    container_name: mi-web-simple
+    environment:
+      VIRTUAL_HOST: miweb.victor.servidorgp.somosdelprieto.com
+      VIRTUAL_PORT: "80"
+      LETSENCRYPT_HOST: miweb.victor.servidorgp.somosdelprieto.com
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
     networks:
       - frontend
 
 networks:
   frontend:
     external: true
-```
+`
 
-#### Paso 2: Envío mediante SCP
-Enviar la carpeta al servidor:
-```bash
-scp -r ./mi-app usuario@192.168.1.152:~/apps/
-```
+---
 
-#### Paso 3: Despliegue mediante SSH
-Conectar al servidor y levantar el contenedor:
-```bash
-ssh usuario@192.168.1.152
-cd ~/apps/mi-app
-docker compose up -d
-```
+## 🔧 Comandos Útiles
 
-### 4. Gestión de Dominios y HTTPS Real
-El servidor implementa **HTTPS Real** mediante dos opciones: 
-1. Let's Encrypt: El contenedor `acme-companion` monitoriza las etiquetas `LETSENCRYPT_HOST` y utiliza el `DuckDNS_Token` configurado en el stack principal para emitir los certificados automáticamente.
-2. Cloudflare: se despliega de forma norma, ya que dentro de cloudflare ya esta la configuracion general
+`ash
+# Ver todos los contenedores
+docker ps -a
 
-### 5. Monitorización y Métricas
-El sistema de monitorización es accesible vía web sin necesidad de puertos adicionales:
-*   **Grafana**: `http://grafana.victor2daw.dpdns.org` (Usuario/Pass configurados).
-*   **Prometheus**: `http://prometheus.victor2daw.dpdns.org`.
+# Ver logs de un contenedor
+docker logs -f nombre_contenedor
 
-**Comprobación de métricas:**
-1.  Acceder a Grafana.
-2.  Consultar el Dashboard **Node Exporter Full (ID: 1860)**.
-3.  Verificar que los paneles de CPU, RAM y Red muestran datos coherentes del host.
+# Reiniciar nginx-proxy (después de añadir nueva app)
+docker restart nginx-proxy
 
-### 6. Mantenimiento Básico
-Comandos esenciales para la operativa diaria:
+# Verificar redes
+docker network ls
+docker network inspect frontend
 
-*   **Ver estado de los servicios**: `docker ps`
-*   **Reiniciar el Proxy Inverso**: `docker restart nginx-proxy`
-*   **Ver logs de certificados**: `docker logs -f nginx-proxy-acme`
-*   **Parar una aplicación**: `cd ~/apps/app-name && docker compose down`
-*   **Gestión Visual**: Acceder a `http://portainer.victor2daw.dpdns.org` para administrar contenedores, redes y volúmenes mediante interfaz gráfica.
+# Limpiar recursos no usados
+docker system prune -f
+
+# Ver espacio en disco
+df -h
+`
+
+---
+
+## 📊 Monitorización
+
+- **Grafana**: https://grafana.victor.servidorgp.somosdelprieto.com
+- **Prometheus URL** (para configurar en Grafana): `http://prometheus:9090`
+
+---
+
+## 🔐 Conexión al Servidor
+
+`ash
+ssh -p 2241 victor@www.servidorgp.somosdelprieto.com
+# Password: Prieto*2
+`
+
+---
+
+## 📝 Notas Importantes
+
+1. **NO uses localhost** en VIRTUAL_HOST, causa conflictos
+2. **Siempre usa xternal: true** en las redes frontend/backend
+3. **El puerto interno** de tu app debe coincidir con VIRTUAL_PORT
+4. **Espera 30-60 segundos** después de desplegar para que se genere el certificado SSL
+5. **Si usas PHP con rutas**, necesitas .htaccess con mod_rewrite habilitado
 

@@ -25,27 +25,23 @@ services:
     restart: always
 
   # --- SSL AUTOMATION ---
-  # acme-companion:
-  #   image: nginxproxy/acme-companion:latest
-  #   container_name: nginx-proxy-acme
-  #   environment:
-  #     - DEFAULT_EMAIL=${ACME_EMAIL}
-  #     - NGINX_PROXY_CONTAINER=nginx-proxy
-  #     # Configuración para validación automática
-  #     - DuckDNS_Token=${DUCKDNS_TOKEN}
-  #     - ACMESH_DNS_API_CONFIG={"DNS_API":"dns_duckdns"}
-  #     - ACME_CHALLENGE=DNS-01
-  #   volumes:
-  #     - /var/run/docker.sock:/var/run/docker.sock:ro
-  #     - certs:/etc/nginx/certs
-  #     - vhost:/etc/nginx/vhost.d
-  #     - html:/usr/share/nginx/html
-  #     - acme:/etc/acme.sh
-  #   depends_on:
-  #     - nginx-proxy
-  #   networks:
-  #     - frontend
-  #   restart: always
+  acme-companion:
+    image: nginxproxy/acme-companion:latest
+    container_name: nginx-proxy-acme
+    environment:
+      - DEFAULT_EMAIL=${ACME_EMAIL}
+      - NGINX_PROXY_CONTAINER=nginx-proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - certs:/etc/nginx/certs
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - acme:/etc/acme.sh
+    depends_on:
+      - nginx-proxy
+    networks:
+      - frontend
+    restart: always
 
   # --- MANAGEMENT ---
   portainer:
@@ -71,6 +67,10 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
+    environment:
+      - VIRTUAL_HOST=prometheus.${MAIN_DOMAIN}
+      - VIRTUAL_PORT=9090
+      - LETSENCRYPT_HOST=prometheus.${MAIN_DOMAIN}
     networks:
       - backend
       - frontend
@@ -105,17 +105,6 @@ services:
       - frontend
       - backend
     restart: unless-stopped
-
-  # --- CLOUDFLARE TUNNEL (EDGE ACCESS) ---
-  cloudflare-tunnel:
-    image: cloudflare/cloudflared:latest
-    container_name: cloudflare-tunnel
-    restart: always
-    environment:
-      - TUNNEL_TOKEN=${CF_TUNNEL_TOKEN}
-    command: tunnel --no-autoupdate run --protocol http2
-    networks:
-      - frontend
 
 volumes:
   portainer_data:
