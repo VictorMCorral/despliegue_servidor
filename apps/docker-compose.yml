@@ -16,7 +16,7 @@ services:
       - "443:443"
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-      - certs:/etc/nginx/certs:ro
+      #- certs:/etc/nginx/certs:ro
       - vhost:/etc/nginx/vhost.d
       - html:/usr/share/nginx/html
     networks:
@@ -25,23 +25,23 @@ services:
     restart: always
 
   # --- SSL AUTOMATION ---
-  acme-companion:
-    image: nginxproxy/acme-companion:latest
-    container_name: nginx-proxy-acme
-    environment:
-      - DEFAULT_EMAIL=${ACME_EMAIL}
-      - NGINX_PROXY_CONTAINER=nginx-proxy
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - certs:/etc/nginx/certs
-      - vhost:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
-      - acme:/etc/acme.sh
-    depends_on:
-      - nginx-proxy
-    networks:
-      - frontend
-    restart: always
+  #acme-companion:
+  #  image: nginxproxy/acme-companion:latest
+  #  container_name: nginx-proxy-acme
+  #  environment:
+  #    - DEFAULT_EMAIL=${ACME_EMAIL}
+  #    - NGINX_PROXY_CONTAINER=nginx-proxy
+  #  volumes:
+  #    - /var/run/docker.sock:/var/run/docker.sock:ro
+  #    - certs:/etc/nginx/certs
+  #    - vhost:/etc/nginx/vhost.d
+  #    - html:/usr/share/nginx/html
+  #    - acme:/etc/acme.sh
+  #  depends_on:
+  #    - nginx-proxy
+  #  networks:
+  #    - frontend
+  #  restart: always
 
   # --- MANAGEMENT ---
   portainer:
@@ -53,9 +53,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data:/data
     environment:
-      - VIRTUAL_HOST=portainer.${MAIN_DOMAIN}
+      - VIRTUAL_HOST=portainer-victor.${MAIN_DOMAIN}
       - VIRTUAL_PORT=9000
-      - LETSENCRYPT_HOST=portainer.${MAIN_DOMAIN}
+      #- LETSENCRYPT_HOST=portainer-victor.${MAIN_DOMAIN}
     networks:
       - frontend
     restart: unless-stopped
@@ -68,9 +68,9 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     environment:
-      - VIRTUAL_HOST=prometheus.${MAIN_DOMAIN}
+      - VIRTUAL_HOST=prometheus-victor.${MAIN_DOMAIN}
       - VIRTUAL_PORT=9090
-      - LETSENCRYPT_HOST=prometheus.${MAIN_DOMAIN}
+      #- LETSENCRYPT_HOST=prometheus-victor${MAIN_DOMAIN}
     networks:
       - backend
       - frontend
@@ -98,9 +98,9 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
     environment:
-      - VIRTUAL_HOST=grafana.${MAIN_DOMAIN}
+      - VIRTUAL_HOST=grafana-victor.${MAIN_DOMAIN}
       - VIRTUAL_PORT=3000
-      - LETSENCRYPT_HOST=grafana.${MAIN_DOMAIN}
+      #- LETSENCRYPT_HOST=grafana.${MAIN_DOMAIN}
     networks:
       - frontend
       - backend
@@ -110,7 +110,7 @@ volumes:
   portainer_data:
   grafana_data:
   prometheus_data:
-  certs:
+  #certs:
   vhost:
   html:
-  acme:
+  #acme:
