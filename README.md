@@ -15,42 +15,40 @@ Este documento detalla el procedimiento operativo para la administración, despl
 
 | Servicio | URL | Descripción |
 |----------|-----|-------------|
-| **Portainer** | https://portainer.victor.servidorgp.somosdelprieto.com | Gestión visual de contenedores |
-| **Grafana** | https://grafana.victor.servidorgp.somosdelprieto.com | Dashboards de monitorización |
-| **PrietoEats** | https://prietoeats.victor.servidorgp.somosdelprieto.com | Aplicación principal |
-| **Meteorología** | https://meteorologia.victor.servidorgp.somosdelprieto.com | App meteorológica |
-| **Meteorología Admin** | https://meteorologia-admin.victor.servidorgp.somosdelprieto.com | PHPMyAdmin |
+| **Portainer** | https://portainer-victor.servidorgp.somosdelprieto.com/ | Gestión visual de contenedores |
+| **Grafana** | https://grafana-victor.servidorgp.somosdelprieto.com | Dashboards de monitorización |
+| **PrietoEats** | https://prietoeats-victor.servidorgp.somosdelprieto.com | Aplicación principal |
 
 ---
 
 ## 🔧 Arquitectura de Red
 
 ```
-                         ┌─────────────────────────────────────────┐
-                         │           INTERNET (HTTPS 443)          │
-                         └─────────────────┬───────────────────────┘
-                                           │
-                         ┌─────────────────▼───────────────────────┐
-                         │           nginx-proxy                    │
-                         │     (Reverse Proxy + SSL Auto)          │
-                         │         Red: frontend                   │
-                         └─────────────────┬───────────────────────┘
-                                           │
-     ┌──────────────────┬──────────────────┼──────────────────┬──────────────────┐
-     │                  │                  │                  │                  │
-┌────▼─────┐      ┌─────▼─────┐      ┌─────▼─────┐      ┌─────▼─────┐      ┌─────▼─────┐
-│Portainer │      │  Grafana  │      │PrietoEats │      │Meteorología│     │ Prometheus│
-│  :9000   │      │  :3000    │      │   :80     │      │   :80      │     │   :9090   │
-│ frontend │      │ frontend  │      │ frontend  │      │ frontend   │     │  backend  │
-└──────────┘      │  +backend │      │ +internal │      │  +backend  │     └─────┬─────┘
-                  └─────┬─────┘      └─────┬─────┘      └─────┬─────┘           │
-                        │                  │                  │                 │
-                        │            ┌─────▼─────┐      ┌─────▼─────┐           │
-                        │            │PostgreSQL │      │  MariaDB  │           │
-                        │            │  internal │      │  backend  │           │
-                        │            └───────────┘      └───────────┘           │
-                        │                                                       │
-                        └───────────────────────────────────────────────────────┘
+              ┌─────────────────────────────────────────┐
+              │           INTERNET (HTTPS 443)          │
+              └─────────────────┬───────────────────────┘
+                                │
+              ┌─────────────────▼───────────────────────┐
+              │           nginx-proxy                    │
+              │     (Reverse Proxy + SSL Auto)          │
+              │         Red: frontend                   │
+              └─────────────────┬───────────────────────┘
+                                │
+     ┌──────────────────┬──────────────────┬──────────────────┐
+     │                  │                  │                  │
+┌────▼─────┐      ┌─────▼─────┐      ┌─────▼─────┐      ┌─────▼─────┐
+│Portainer │      │  Grafana  │      │PrietoEats │      │ Prometheus│
+│  :9000   │      │  :3000    │      │   :80     │      │   :9090   │
+│ frontend │      │ frontend  │      │ frontend  │      │  backend  │
+└──────────┘      │  +backend │      │ +internal │      └───── ─────┘
+                  └─────┬─────┘      └─────┬─────┘            │
+                        │                  │                  │
+                        │            ┌─────▼─────┐            │
+                        │            │PostgreSQL │            │
+                        │            │  internal │            │
+                        │            └───────────┘            │
+                        │                                     │
+                        └─────────────────────────────────────┘
                                       (Grafana consulta Prometheus)
 ```
 
